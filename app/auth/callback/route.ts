@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
-export async function GET() {
-  return NextResponse.redirect(new URL("/dashboard", process.env.NEXT_PUBLIC_URL || "http://localhost:3000"))
+export async function GET(request: NextRequest) {
+  const origin = request.nextUrl.origin
+  return NextResponse.redirect(new URL("/dashboard", origin))
 }
