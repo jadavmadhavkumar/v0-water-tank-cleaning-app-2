@@ -1,0 +1,5 @@
+{
+  "project": "coordinated-walrus-350",
+  "productionUrl": "https://coordinated-walrus-350.convex.cloud",
+  "functions": "convex/"
+}

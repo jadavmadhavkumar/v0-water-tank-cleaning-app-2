@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button"
 interface WhatsAppButtonProps {
   phoneNumber?: string
   message?: string
+  bookingDetails?: {
+    serviceName: string
+    date: string
+    time: string
+    address: string
+    amount: number
+  }
   className?: string
   variant?: "default" | "outline"
   size?: "default" | "sm" | "lg"
@@ -14,12 +21,29 @@ interface WhatsAppButtonProps {
 export function WhatsAppButton({
   phoneNumber = "+91 70113 65481", // Falkon support number
   message = "Hello! I'm interested in your water tank cleaning services.",
+  bookingDetails,
   className = "",
   variant = "default",
   size = "default",
 }: WhatsAppButtonProps) {
   const handleWhatsAppClick = () => {
-    const encodedMessage = encodeURIComponent(message)
+    let finalMessage = message
+
+    if (bookingDetails) {
+      finalMessage = `🏠 *Falkon Water Tank Cleaning*
+
+📋 *Booking Confirmation Required*
+
+🔧 *Service:* ${bookingDetails.serviceName}
+📅 *Date:* ${bookingDetails.date}
+⏰ *Time:* ${bookingDetails.time}
+📍 *Address:* ${bookingDetails.address}
+💰 *Amount:* ₹${bookingDetails.amount}
+
+Please confirm this booking. Thank you!`
+    }
+
+    const encodedMessage = encodeURIComponent(finalMessage)
     const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodedMessage}`
     window.open(whatsappURL, "_blank")
   }

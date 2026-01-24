@@ -6,7 +6,7 @@ import { Icons } from "@/components/icons"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -79,20 +79,23 @@ export function Header() {
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
             <SignedOut>
-              <SignInButton mode="modal">
+              <Link href="/sign-in">
                 <Button variant="ghost" className="font-semibold">
                   Login
                 </Button>
-              </SignInButton>
-              <SignUpButton mode="modal">
+              </Link>
+              <Link href="/sign-up">
                 <Button className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg text-primary-foreground font-semibold">
                   Sign Up
                 </Button>
-              </SignUpButton>
+              </Link>
             </SignedOut>
             <SignedIn>
               <Link href="/dashboard">
-                <Button variant="ghost" className="font-semibold">
+                <Button
+                  variant="ghost"
+                  className="font-semibold"
+                >
                   Dashboard
                 </Button>
               </Link>
@@ -100,7 +103,7 @@ export function Header() {
                 afterSignOutUrl="/"
                 appearance={{
                   elements: {
-                    avatarBox: "h-10 w-10",
+                    avatarBox: "w-8 h-8",
                   },
                 }}
               />
@@ -177,19 +180,16 @@ export function Header() {
                   </nav>
                   <div className="flex flex-col gap-3 pt-4 border-t border-border">
                     <SignedOut>
-                      <SignInButton mode="modal">
-                        <Button variant="outline" className="w-full font-semibold justify-center" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/sign-in" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="outline" className="w-full font-semibold justify-center">
                           Login
                         </Button>
-                      </SignInButton>
-                      <SignUpButton mode="modal">
-                        <Button
-                          className="w-full bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold justify-center shadow-lg shadow-primary/20"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
+                      </Link>
+                      <Link href="/sign-up" onClick={() => setMobileMenuOpen(false)}>
+                        <Button className="w-full bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold justify-center shadow-lg shadow-primary/20">
                           Sign Up
                         </Button>
-                      </SignUpButton>
+                      </Link>
                     </SignedOut>
                     <SignedIn>
                       <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
@@ -197,8 +197,8 @@ export function Header() {
                           Dashboard
                         </Button>
                       </Link>
-                      <div className="flex justify-center py-2">
-                        <UserButton afterSignOutUrl="/" showName />
+                      <div className="flex items-center justify-center py-4">
+                        <UserButton afterSignOutUrl="/" />
                       </div>
                     </SignedIn>
                   </div>

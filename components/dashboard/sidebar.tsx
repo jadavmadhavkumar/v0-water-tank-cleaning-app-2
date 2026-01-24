@@ -47,6 +47,10 @@ export function Sidebar({ userRole }: SidebarProps) {
     router.push("/")
   }
 
+  const handleToggle = () => {
+    setCollapsed(!collapsed)
+  }
+
   return (
     <>
       {/* Mobile Overlay */}

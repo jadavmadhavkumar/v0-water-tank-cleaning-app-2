@@ -9,24 +9,29 @@ export const get = query({
     },
 });
 
-// Get bookings for a specific user
+// Get bookings for current user
 export const getByUser = query({
     args: {},
     handler: async (ctx) => {
-        // TEMPORARY: Return all bookings for testing (authentication disabled)
-        // TODO: Re-enable authentication filtering once Convex dev server is configured
-
-        /* const identity = await ctx.auth.getUserIdentity();
+        const identity = await ctx.auth.getUserIdentity();
         if (!identity) {
             return [];
         }
         return await ctx.db
             .query("bookings")
             .withIndex("by_user", (q) => q.eq("userId", identity.subject))
-            .collect(); */
+            .collect();
+    },
+});
 
-        // For now, return all bookings
-        return await ctx.db.query("bookings").collect();
+// Get bookings by specific user ID (admin function)
+export const getByUserId = query({
+    args: { userId: v.string() },
+    handler: async (ctx, { userId }) => {
+        return await ctx.db
+            .query("bookings")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .collect();
     },
 });
 
@@ -43,36 +48,33 @@ export const create = mutation({
         paymentMethod: v.union(v.literal("cash"), v.literal("wallet")),
     },
     handler: async (ctx, args) => {
-        // TEMPORARY: Authentication disabled for testing
-        // TODO: Re-enable authentication once Convex dev server is properly configured
-
-        /* const identity = await ctx.auth.getUserIdentity();
+        const identity = await ctx.auth.getUserIdentity();
         if (!identity) {
             throw new Error("Unauthenticated call to create booking");
         }
 
+        // Get user to check wallet balance if paying with wallet
         const user = await ctx.db
             .query("users")
-            .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
-            .unique();
+            .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+            .first();
 
-        if (!user) {
-            throw new Error("User not found");
-        } */
-
-        // Using a temporary test user ID for now
-        const testUserId = "test-user-" + Date.now();
-
-        // Handle wallet payment (disabled for testing)
+        // Handle wallet payment
         let paymentStatus = "pending";
         if (args.paymentMethod === "wallet") {
-            // Wallet payment disabled during testing
-            // In production, this would check balance and deduct
-            paymentStatus = "pending"; // Changed from "paid" to "pending" since we can't verify balance
+            if (!user || !user.walletBalance || user.walletBalance < args.amount) {
+                throw new Error("Insufficient wallet balance");
+            }
+            // Deduct from wallet
+            await ctx.db.patch(user._id, {
+                walletBalance: (user.walletBalance || 0) - args.amount,
+                updatedAt: Date.now(),
+            });
+            paymentStatus = "paid";
         }
 
         const bookingId = await ctx.db.insert("bookings", {
-            userId: testUserId, // Using test user ID instead of identity.subject
+            userId: identity.subject,
             serviceName: args.serviceName,
             date: args.date,
             time: args.time,
@@ -80,7 +82,7 @@ export const create = mutation({
             address: args.address,
             tankSize: args.tankSize,
             tankType: args.tankType,
-            status: "confirmed", // Auto-confirm for now
+            status: "pending", // Start as pending, admin confirms
             paymentStatus: paymentStatus,
         });
 
@@ -101,6 +103,66 @@ export const updateStatus = mutation({
         ),
     },
     handler: async (ctx, args) => {
+        // TODO: Add admin role check
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Unauthenticated");
+        }
+
         await ctx.db.patch(args.id, { status: args.status });
+    },
+});
+
+// Cancel booking (user can cancel their own booking)
+export const cancel = mutation({
+    args: {
+        id: v.id("bookings"),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Unauthenticated");
+        }
+
+        const booking = await ctx.db.get(args.id);
+        if (!booking) {
+            throw new Error("Booking not found");
+        }
+
+        if (booking.userId !== identity.subject) {
+            throw new Error("Unauthorized to cancel this booking");
+        }
+
+        if (booking.status === "completed" || booking.status === "in-progress") {
+            throw new Error("Cannot cancel booking in progress or completed");
+        }
+
+        // If paid via wallet, refund the amount
+        if (booking.paymentStatus === "paid") {
+            const user = await ctx.db
+                .query("users")
+                .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+                .first();
+
+            if (user) {
+                await ctx.db.patch(user._id, {
+                    walletBalance: (user.walletBalance || 0) + booking.amount,
+                    updatedAt: Date.now(),
+                });
+            }
+        }
+
+        await ctx.db.patch(args.id, {
+            status: "cancelled",
+            paymentStatus: "refunded"
+        });
+    },
+});
+
+// Get booking by ID
+export const getById = query({
+    args: { id: v.id("bookings") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.id);
     },
 });

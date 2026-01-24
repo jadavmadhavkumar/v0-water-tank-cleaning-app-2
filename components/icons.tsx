@@ -26,6 +26,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
+  Database,
   CreditCard,
   FileText,
   MessageSquare,
@@ -50,6 +51,9 @@ import {
   Award,
   Zap,
   Edit,
+  Code,
+  LogIn,
+  UserPlus,
 } from "lucide-react"
 
 export const Icons = {
@@ -104,6 +108,10 @@ export const Icons = {
   award: Award,
   zap: Zap,
   edit: Edit,
+  code: Code,
+  login: LogIn,
+  userPlus: UserPlus,
+  database: Database,
 }
 
 export function getServiceIcon(iconName: string) {
@@ -158,6 +166,10 @@ export function getServiceIcon(iconName: string) {
     award: Award,
     zap: Zap,
     edit: Edit,
+    code: Code,
+    login: LogIn,
+    userPlus: UserPlus,
+    database: Database,
   }
   return iconMap[iconName] || Droplets
 }

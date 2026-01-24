@@ -1,9 +1,28 @@
-import { SignUp } from "@clerk/nextjs";
+import { SignUp } from '@clerk/nextjs'
 
 export default function Page() {
-    return (
-        <div className="flex items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-muted/30">
-            <SignUp />
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Join Falkon for professional water tank cleaning
+          </p>
         </div>
-    );
+        <SignUp
+          appearance={{
+            elements: {
+              rootBox: "mx-auto",
+              card: "shadow-lg",
+            }
+          }}
+          routing="path"
+          path="/sign-up"
+          redirectUrl="/dashboard"
+          signInUrl="/sign-in"
+        />
+      </div>
+    </div>
+  )
 }

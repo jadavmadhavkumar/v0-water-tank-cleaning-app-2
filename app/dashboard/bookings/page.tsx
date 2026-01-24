@@ -1,9 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
-import { Doc } from "@/convex/_generated/dataModel"
+import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
 import { TopBar } from "@/components/dashboard/top-bar"
 import { Button } from "@/components/ui/button"
@@ -12,19 +9,25 @@ import { Icons } from "@/components/icons"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { BookingCard } from "@/components/dashboard/booking-card"
+import { LocalBookingManager, LocalBooking } from "@/lib/local-storage"
 
 type FilterType = "all" | "active" | "completed" | "cancelled"
 
-
-
 export default function BookingsPage() {
-  /* const { user } = useUser() */
-  const bookings = useQuery(api.bookings.getByUser)
+  const { user, isLoaded } = useUser()
+  const [bookings, setBookings] = useState<LocalBooking[]>([])
   const [filter, setFilter] = useState<FilterType>("all")
+  const [isLoading, setIsLoading] = useState(true)
 
-  const isLoading = bookings === undefined
+  useEffect(() => {
+    if (isLoaded && user) {
+      const userBookings = LocalBookingManager.getUserBookings(user.id)
+      setBookings(userBookings)
+      setIsLoading(false)
+    }
+  }, [user, isLoaded])
 
-  const filteredBookings = ((bookings || []) as Doc<"bookings">[]).filter((booking) => {
+  const filteredBookings = bookings.filter((booking) => {
     if (filter === "all") return true
     if (filter === "active") return ["pending", "confirmed", "in-progress"].includes(booking.status)
     if (filter === "completed") return booking.status === "completed"
@@ -39,13 +42,22 @@ export default function BookingsPage() {
     { label: "Cancelled", value: "cancelled" },
   ]
 
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TopBar title="My Bookings" />
+        <div className="flex items-center justify-center py-16">
+          <Icons.loader className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <TopBar title="My Bookings" />
 
       <div className="p-6">
-
-
         {/* Filters */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex gap-2">
@@ -78,7 +90,7 @@ export default function BookingsPage() {
         ) : filteredBookings.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredBookings.map((booking) => (
-              <BookingCard key={booking._id} booking={booking} />
+              <BookingCard key={booking.id} booking={booking} />
             ))}
           </div>
         ) : (

@@ -48,17 +48,17 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <ConvexClientProvider>
-      <html lang="en">
-        <body className={`${roboto.variable} ${poppins.variable} font-sans`}>
+    <html lang="en">
+      <body className={`${roboto.variable} ${poppins.variable} font-sans antialiased`}>
+        <ConvexClientProvider>
           {children}
           <Toaster />
-          <Analytics />
-        </body>
-      </html>
-    </ConvexClientProvider>
-  )
+        </ConvexClientProvider>
+        <Analytics />
+      </body>
+    </html>
+  );
 }

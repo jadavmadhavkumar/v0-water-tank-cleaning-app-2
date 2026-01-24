@@ -8,20 +8,43 @@ import { Button } from "@/components/ui/button"
 import { Icons } from "@/components/icons"
 import { useAppStore } from "@/lib/store"
 import Link from "next/link"
-
-import { useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
+import { LocalBookingManager } from "@/lib/local-storage"
 import { useUser } from "@clerk/nextjs"
 
 export default function DashboardPage() {
-  /* const { user } = useUser() */
-  const bookings = useQuery(api.bookings.getByUser)
-  const userData = useQuery(api.users.current);
-  // const { customer } = useAppStore() // Keeping customer store for now, ideally also should be in Convex
+  const { user, isLoaded } = useUser()
 
-  const activeBookings = (bookings || []).filter((b) => ["pending", "confirmed", "in-progress"].includes(b.status))
-  const completedBookings = (bookings || []).filter((b) => b.status === "completed")
-  const totalSpent = (bookings || []).filter((b) => b.status === "completed").reduce((sum, b) => sum + b.amount, 0)
+  // Use LocalBookingManager for bookings and wallet data
+  const bookings = user ? LocalBookingManager.getUserBookings(user.id) : [];
+  const walletBalance = LocalBookingManager.getWalletBalance();
+
+  const userData = user ? {
+    clerkId: user.id,
+    email: user.emailAddresses?.[0]?.emailAddress || "",
+    fullName: user.fullName || `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    imageUrl: user.imageUrl || "",
+    role: "user",
+    walletBalance: walletBalance,
+  } : null;
+
+  // Show loading state while user is loading
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TopBar title="Dashboard" />
+        <div className="p-6 flex items-center justify-center">
+          <div className="text-center">
+            <Icons.loader className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const activeBookings = bookings.filter((b) => ["pending", "confirmed", "in-progress"].includes(b.status))
+  const completedBookings = bookings.filter((b) => b.status === "completed")
+  const totalSpent = completedBookings.reduce((sum, b) => sum + b.amount, 0)
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,7 +92,7 @@ export default function DashboardPage() {
             {activeBookings.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-4">
                 {activeBookings.slice(0, 2).map((booking) => (
-                  <BookingCard key={booking._id} booking={booking} />
+                  <BookingCard key={booking.id} booking={booking} />
                 ))}
               </div>
             ) : (

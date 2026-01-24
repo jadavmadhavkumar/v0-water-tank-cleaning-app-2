@@ -10,30 +10,35 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { serviceItems, serviceCategories } from "@/lib/mock-data"
 import { getServiceIcon, Icons } from "@/components/icons"
-import { useMutation, useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
-// import { useAppStore } from "@/lib/store" // Removing store dependency for user/booking
 import { cn } from "@/lib/utils"
-// import type { Booking } from "@/lib/types" // Using Convex types implicitly or defined locally if needed
 import { CalendarPicker } from "@/components/booking/calendar-picker"
 import { LocationPicker } from "@/components/booking/location-picker"
 import { PaymentMethods } from "@/components/payment/payment-methods"
 import { WhatsAppButton } from "@/components/shared/whatsapp-button"
 import type { PaymentMethod } from "@/lib/types"
 
-import { useAuth } from "@clerk/nextjs"
+import { LocalBookingManager } from "@/lib/local-storage"
+
+import { useUser } from "@clerk/nextjs"
 
 export default function ServiceBookingPage() {
   const params = useParams()
   const router = useRouter()
-  const { isSignedIn, userId } = useAuth()
+  // const { isSignedIn, userId } = useAuth()
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
 
-  const user = useQuery(api.users.current);
-  const createBooking = useMutation(api.bookings.create);
+  // Use only Clerk user data with local storage
+  const walletBalance = LocalBookingManager.getWalletBalance();
+  const user = clerkUser ? {
+    clerkId: clerkUser.id,
+    email: clerkUser.emailAddresses?.[0]?.emailAddress || "",
+    fullName: clerkUser.fullName || `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim(),
+    walletBalance: walletBalance,
+  } : null;
 
   // Debug logging
-  console.log("Clerk isSignedIn:", isSignedIn, "userId:", userId);
-  console.log("User from Convex query:", user);
+  console.log("Clerk Auth isSignedIn:", isSignedIn, "isLoaded:", isLoaded);
+  console.log("User data:", user);
 
   const service = serviceItems.find((s) => s.id === params.serviceId)
   const category = serviceCategories.find((c) => c.id === service?.categoryId)
@@ -92,7 +97,7 @@ export default function ServiceBookingPage() {
       return
     }
 
-    if (!isSignedIn) {
+    if (!isLoaded || !isSignedIn) {
       toast.error("Please log in to book a service")
       return
     }
@@ -100,26 +105,43 @@ export default function ServiceBookingPage() {
     setIsBooking(true)
 
     try {
-      await createBooking({
+      // Handle wallet payment check
+      if (selectedPaymentMethod === "wallet" && user && user.walletBalance < totalPrice) {
+        toast.error("Insufficient wallet balance. Please add funds or choose Cash payment.");
+        setIsBooking(false);
+        return;
+      }
+
+      // Create booking using LocalBookingManager
+      const bookingData = LocalBookingManager.addBooking({
         serviceName: service.name,
-        date: new Date(selectedDate!).getTime(), // Convex expects number (timestamp)
+        date: new Date(selectedDate!).getTime(),
         time: selectedTime!,
         amount: totalPrice,
-        address: selectedAddress, // Use the selected address from location picker
-        tankSize: selectedTankSize || undefined,
-        tankType: selectedTankType || undefined,
+        address: selectedAddress,
+        tankSize: selectedTankSize,
+        tankType: selectedTankType,
         paymentMethod: selectedPaymentMethod === "wallet" ? "wallet" : "cash",
+        userId: clerkUser?.id || "",
       });
 
+      // Update wallet balance if paid via wallet
+      if (selectedPaymentMethod === "wallet") {
+        const success = LocalBookingManager.deductFromWallet(totalPrice);
+        if (!success) {
+          // Remove the booking if wallet deduction failed
+          LocalBookingManager.deleteBooking(bookingData.id);
+          setIsBooking(false);
+          return;
+        }
+      }
+
+      console.log("Booking created successfully:", bookingData);
       toast.success("Booking confirmed successfully!")
       setStep(5) // Success step
     } catch (error: any) {
-      console.error(error);
-      if (error.message.includes("Insufficient wallet balance")) {
-        toast.error("Insufficient wallet balance. Please add funds or choose Cash.");
-      } else {
-        toast.error("Failed to create booking. Please try again.");
-      }
+      console.error("Booking error:", error);
+      toast.error("Failed to create booking. Please try again.");
     } finally {
       setIsBooking(false)
     }
@@ -144,6 +166,8 @@ export default function ServiceBookingPage() {
       <TopBar title="Book Service" />
 
       <div className="p-6 max-w-4xl mx-auto">
+
+
         {/* Progress Steps */}
         <div className="flex items-center justify-center mb-8 overflow-x-auto">
           {[1, 2, 3, 4].map((s) => (
@@ -518,6 +542,17 @@ export default function ServiceBookingPage() {
             <div className="space-y-3">
               <WhatsAppButton
                 phoneNumber="+919876543210"
+                bookingDetails={{
+                  serviceName: service.name,
+                  date: selectedDate ? new Date(selectedDate).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                  }) : "",
+                  time: selectedTime || "",
+                  address: selectedAddress || "",
+                  amount: totalPrice
+                }}
                 message="Hi Falkon! I have confirmed my booking and want to discuss further details."
               />
               <Button variant="outline" size="lg" onClick={() => router.push("/dashboard")} className="w-full">

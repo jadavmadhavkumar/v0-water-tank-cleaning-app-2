@@ -1,22 +1,45 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useUser } from "@clerk/nextjs"
 import { TopBar } from "@/components/dashboard/top-bar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Icons } from "@/components/icons"
-import { useAppStore } from "@/lib/store"
+import { LocalBookingManager, LocalBooking } from "@/lib/local-storage"
 import { mockStaff } from "@/lib/mock-data"
 import Link from "next/link"
 
 export default function BookingDetailsPage() {
   const params = useParams()
   const router = useRouter()
-  const { bookings, updateBookingStatus } = useAppStore()
+  const { user, isLoaded } = useUser()
+  const [booking, setBooking] = useState<LocalBooking | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const booking = bookings.find((b) => b.id === params.bookingId)
-  const assignedStaff = booking?.staffId ? mockStaff.find((s) => s.id === booking.staffId) : null
+  useEffect(() => {
+    if (isLoaded && user) {
+      const userBookings = LocalBookingManager.getUserBookings(user.id)
+      const foundBooking = userBookings.find((b) => b.id === params.bookingId)
+      setBooking(foundBooking || null)
+      setLoading(false)
+    }
+  }, [user, isLoaded, params.bookingId])
+
+  const assignedStaff = null // Remove staff assignment for now
+
+  if (loading || !isLoaded) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TopBar title="Loading..." />
+        <div className="flex items-center justify-center py-16">
+          <Icons.loader className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </div>
+    )
+  }
 
   if (!booking) {
     return (

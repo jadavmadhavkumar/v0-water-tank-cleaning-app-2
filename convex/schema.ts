@@ -24,12 +24,20 @@ export default defineSchema({
         .index("by_status", ["status"]),
 
     users: defineTable({
-        userId: v.string(), // Clerk User ID (primary key for lookups)
+        // Clerk fields
+        clerkId: v.string(), // Clerk User ID
         email: v.string(),
-        fullName: v.string(),
-        role: v.string(), // "admin" | "user"
-        walletBalance: v.number(),
+        fullName: v.optional(v.string()),
+        imageUrl: v.optional(v.string()),
+
+        // App specific fields
+        role: v.optional(v.string()), // "admin" | "user"
+        walletBalance: v.optional(v.number()),
         address: v.optional(v.string()),
         phoneNumber: v.optional(v.string()),
-    }).index("by_userId", ["userId"]),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_clerk_id", ["clerkId"])
+        .index("by_email", ["email"]),
 });
